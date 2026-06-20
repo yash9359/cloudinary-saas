@@ -1,13 +1,18 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher(["/signup", "/signin", "/", "/home"]);
+const isPublicRoute = createRouteMatcher(["/sign-up", "/sign-in", "/", "/home"]);
 
 const isPublicApiRoute = createRouteMatcher(["/api/videos"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  console.log("PATH:", req.nextUrl.pathname);
+
+
   const user = await auth();
   const { userId } = user;
+
+  console.log("USER:", userId);
 
   const currentUrl = new URL(req?.url);
 
@@ -23,14 +28,14 @@ export default clerkMiddleware(async (auth, req) => {
   if (!userId) {
     // agar user logged in nahi hai  and try kar raha ki protected route access kare too naa meri jaan
     if (!isPublicRoute(req) && !isPublicApiRoute(req)) {
-      return NextResponse.redirect(new URL("/signin", req.url));
+      return NextResponse.redirect(new URL("/sign-in", req.url));
     }
-    // looged in nahi and api request laga raha  protected api route to bhi signin page mai bhejo
+    // looged in nahi and api request laga raha  protected api route to bhi sign-in page mai bhejo
     if (isApiRequest && !isPublicApiRoute(req)) {
-      return NextResponse.redirect(new URL("/signin", req.url));
+      return NextResponse.redirect(new URL("/sign-in", req.url));
     }
   }
-
+ 
   return NextResponse.next();
 });
 
