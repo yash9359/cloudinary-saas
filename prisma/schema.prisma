@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Video {
+  // @id matlb primary key of the Video table default ka mata;b hai ki na do to khud genrate kar lega
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  // ye publicId hmee cloudinary dega aree video ka link
+  publicId String
+  originalSize String
+  compressedSize String
+  duration String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+}
