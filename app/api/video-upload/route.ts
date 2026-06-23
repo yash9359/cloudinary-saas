@@ -1,20 +1,10 @@
 import cloudinary from "@/lib/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { Pool } from "pg";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { error } from "console";
+import prisma from "@/PrismaSetup/prismaSetup";
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
 
-const adapter = new PrismaPg(pool);
 
-const prisma = new PrismaClient({
-    adapter,
-});
 
 interface CloudinaryUploadResult {
     public_id: string;
@@ -25,9 +15,6 @@ interface CloudinaryUploadResult {
 
 export async function POST(request: NextRequest) {
 
-
-
-
     try {
 
         const user = await auth();
@@ -36,6 +23,7 @@ export async function POST(request: NextRequest) {
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        
         if (
             !process.env.CLOUDINARY_CLOUD_NAME ||
             !process.env.CLOUDINARY_API_KEY ||
