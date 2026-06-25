@@ -1,4 +1,4 @@
-"use-client"
+"use client"
 
 import React, { useState, useEffect, FormEvent } from 'react'
 import axios from 'axios'
@@ -30,6 +30,10 @@ function VideoUpload() {
       toast.error("File Size is too large");
       return;
     }
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -46,7 +50,14 @@ function VideoUpload() {
 
       toast.success("Upload Successful");
 
-      router.push("/")
+      setFile(null);
+      setTitle("");
+      setDescription("");
+
+
+      router.push("/");
+
+
     } catch (error) {
       toast.error("Video Upload failed")
     } finally {
