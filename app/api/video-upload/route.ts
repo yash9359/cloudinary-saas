@@ -10,7 +10,12 @@ interface CloudinaryUploadResult {
     public_id: string;
     bytes: number;
     duration?: number;
-    [key: string]: any;
+    eager?: Array<{
+        bytes?: number;
+        secure_url?: string;
+        url?: string;
+    }>;
+    [key: string]: unknown;
 }
 
 export async function POST(request: NextRequest) {
@@ -58,12 +63,14 @@ export async function POST(request: NextRequest) {
                     {
                         resource_type: "video",
                         folder: "saas-video-upload",
-                        transformation: [
+                        eager: [
                             {
-                                quality: "auto",
-                                fetch_format: "mp4"
+                                quality: "auto:low",
+                                fetch_format: "mp4",
+                                video_codec: "auto"
                             }
-                        ]
+                        ],
+                        eager_async: false
                     },
                     (error, result) => {
                         if (error) reject(error);
@@ -74,13 +81,15 @@ export async function POST(request: NextRequest) {
             },
         );
 
+        const compressedSize = result.eager?.[0]?.bytes ?? result.bytes;
+
         const video = await prisma.video.create({
             data: {
                 title,
                 description,
                 publicId: result.public_id,
                 originalSize: originalSize,
-                compressedSize: String(result.bytes),
+                compressedSize: String(compressedSize),
                 duration: result.duration|| 0
             }
         })

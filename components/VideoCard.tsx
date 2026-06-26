@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { getCldImageUrl, getCldVideoUrl } from "next-cloudinary"
 import { Download, Clock, FileDown, FileUp } from "lucide-react"
 import dayjs from "dayjs";
@@ -6,7 +6,6 @@ import realtiveTime from "dayjs/plugin/relativeTime";
 import { filesize } from "filesize"
 
 import { Video } from '../types/index';
-import Image from 'next/image';
 
 
 dayjs.extend(realtiveTime);
@@ -41,7 +40,7 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
             src: publicId,
             width: 1920,
             height: 1080,
-
+            rawTransformations: ["q_auto:low,f_mp4,vc_auto"]
         })
     }, [])
 
@@ -50,7 +49,9 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
             src: publicId,
             width: 400,
             height: 225,
-            rawTransformations: ["e_preview: duration_15sec :max_seg_9:min_seg_dur_1"]
+            crop: "fill",
+            gravity: "auto",
+            rawTransformations: ["so_0,du_15,q_auto:low,f_mp4"]
 
         })
     }, [])
@@ -65,13 +66,14 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
         return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
     }, []);
 
-    const compressionPercentage = Math.round(
-        (1 - Number(video.compressedSize) / Number(video.originalSize)) * 100
-    );
-
-    useEffect(() => {
-        setPreviewError(false);
-    }, [isHovered]);
+    const originalSize = Number(video.originalSize);
+    const compressedSize = Number(video.compressedSize);
+    const compressionPercentage =
+        originalSize > 0 && compressedSize > 0
+            ? Math.max(0, Math.round((1 - compressedSize / originalSize) * 100))
+            : 0;
+    const compressionLabel =
+        compressionPercentage > 0 ? `${compressionPercentage}% smaller` : "No reduction";
 
     const handlePreviewError = () => {
         setPreviewError(true);
@@ -80,7 +82,10 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
     return (
         <div
             className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300"
-            onMouseEnter={() => setIsHovered(true)}
+            onMouseEnter={() => {
+                setPreviewError(false);
+                setIsHovered(true);
+            }}
             onMouseLeave={() => setIsHovered(false)}
         >
             <figure className="aspect-video relative">
@@ -92,15 +97,18 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
                     ) : (
                         <video
                             src={getPreviewVideoUrl(video.publicId)}
+                            poster={getThumbnailUrl(video.publicId)}
                             autoPlay
                             muted
                             loop
+                            playsInline
+                            preload="metadata"
                             className="w-full h-full object-cover"
                             onError={handlePreviewError}
                         />
                     )
                 ) : (
-                    <Image
+                    <img
                         src={getThumbnailUrl(video.publicId)}
                         alt={video.title}
                         className="w-full h-full object-cover"
@@ -124,21 +132,21 @@ function VideoCard({ video, onDownload }: VideoCardProps) {
                         <FileUp size={18} className="mr-2 text-primary" />
                         <div>
                             <div className="font-semibold">Original</div>
-                            <div>{formatSize(Number(video.originalSize))}</div>
+                            <div>{formatSize(originalSize)}</div>
                         </div>
                     </div>
                     <div className="flex items-center">
                         <FileDown size={18} className="mr-2 text-secondary" />
                         <div>
                             <div className="font-semibold">Compressed</div>
-                            <div>{formatSize(Number(video.compressedSize))}</div>
+                            <div>{formatSize(compressedSize)}</div>
                         </div>
                     </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <div className="text-sm font-semibold">
                         Compression:{" "}
-                        <span className="text-accent">{compressionPercentage}%</span>
+                        <span className="text-accent">{compressionLabel}</span>
                     </div>
                     <button
                         className="btn btn-primary btn-sm"
