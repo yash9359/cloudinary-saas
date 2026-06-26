@@ -1,81 +1,55 @@
 # Cloudinary SaaS
 
-A Next.js App Router project for authenticated media workflows. Users can sign in with Clerk, upload videos to Cloudinary, store video metadata in Postgres with Prisma, view compressed video cards, download optimized MP4s, and create social-media-ready image crops.
+A Next.js App Router application for authenticated media workflows — upload videos, compress them server-side via Cloudinary, and generate social-media-ready image crops.
 
-## Features
+## What it does
 
-- Clerk authentication with protected app routes
-- Video upload to Cloudinary
-- Server-side Cloudinary video compression using eager transformations
-- Video gallery with thumbnails, hover previews, duration, original size, compressed size, and compression savings
-- Social media image creator with Cloudinary transformations for common formats
-- Prisma + PostgreSQL persistence for uploaded video metadata
-- Tailwind CSS + DaisyUI interface with dark theme
+- **Video upload** — authenticated users upload videos; the server compresses them via Cloudinary eager transformations and stores metadata in Postgres
+- **Video gallery** — public gallery showing thumbnails, hover previews, duration, original vs. compressed size, and compression savings
+- **Social image creator** — upload an image and get transformed versions for Instagram, Twitter, and Facebook formats
+- **Auth** — Clerk handles sign-in, sign-up, and route protection
 
-## Tech Stack
+## Tech stack
 
-- Next.js 16 App Router
-- React 19
-- TypeScript
-- Clerk
-- Cloudinary and next-cloudinary
-- Prisma 7 with PostgreSQL
-- Tailwind CSS 4 and DaisyUI
-- Axios, react-hot-toast, lucide-react, dayjs, filesize
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 16 App Router, React 19, TypeScript |
+| Auth | Clerk |
+| Media | Cloudinary, next-cloudinary |
+| Database | Prisma 7 + PostgreSQL |
+| UI | Tailwind CSS 4, DaisyUI |
+| Utilities | Axios, react-hot-toast, lucide-react, dayjs, filesize |
 
-## App Routes
+## Routes
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Redirects to `/home` |
-| `/home` | Public video gallery with loading skeletons |
-| `/video-upload` | Protected video upload form |
-| `/social-share` | Protected image upload and social format transformer |
-| `/sign-in` | Clerk sign-in page |
-| `/sign-up` | Clerk sign-up page |
+| Route | Auth | Purpose |
+|---|---|---|
+| `/home` | Public | Video gallery |
+| `/video-upload` | Required | Upload a video |
+| `/social-share` | Required | Image transformation tool |
+| `/sign-in` | — | Clerk sign-in |
+| `/sign-up` | — | Clerk sign-up |
+| `/` | — | Redirects to `/home` |
 
-## API Routes
+## API
 
-| Endpoint | Method | Purpose | Auth |
-| --- | --- | --- | --- |
-| `/api/videos` | `GET` | Returns videos ordered by newest first | Public |
-| `/api/video-upload` | `POST` | Uploads and compresses a video, then stores metadata | Required |
-| `/api/image-upload` | `POST` | Uploads an image for Cloudinary transformations | Required |
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/videos` | GET | — | List videos, newest first |
+| `/api/video-upload` | POST | Required | Upload + compress video, store metadata |
+| `/api/image-upload` | POST | Required | Upload image for transformations |
 
-## Project Structure
+## Setup
 
-```txt
-app/
-  (app)/
-    home/                 Video gallery
-    social-share/         Image transformation tool
-    video-upload/         Video upload form
-    layout.tsx            Authenticated app shell/sidebar
-  (auth)/
-    sign-in/              Clerk sign-in
-    sign-up/              Clerk sign-up
-    layout.tsx            Centered auth layout
-  api/
-    image-upload/         Image upload route
-    video-upload/         Video upload + compression route
-    videos/               Video listing route
-components/
-  VideoCard.tsx           Video thumbnail, preview, size, compression UI
-  ToastProvider.tsx       Global toast provider
-lib/
-  cloudinary.ts           Cloudinary server SDK config
-PrismaSetup/
-  prismaSetup.ts          Prisma client with pg adapter
-prisma/
-  schema.prisma           Video model and Postgres datasource
-proxy.ts                  Clerk route protection and redirects
-types/
-  index.ts                Shared Video type
+**1. Install dependencies**
+
+```bash
+npm install
 ```
 
-## Environment Variables
+**2. Configure environment**
 
-Create `.env.local` from `.env.example` and fill in real values.
+Copy `.env.example` to `.env.local` and fill in values:
 
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
@@ -90,117 +64,53 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-Keep `.env.local` private. Do not commit real Clerk, Cloudinary, or database credentials.
-
-## Setup
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Generate Prisma client:
+**3. Set up the database**
 
 ```bash
 npx prisma generate
-```
-
-Run database migrations:
-
-```bash
 npx prisma migrate dev
 ```
 
-Start the development server:
+**4. Start the dev server**
 
 ```bash
 npm run dev
 ```
 
-Open:
-
-```txt
-http://localhost:3000
-```
+Open `http://localhost:3000`.
 
 ## Scripts
 
 ```bash
-npm run dev      # Start Next.js dev server
-npm run build    # Generate Prisma client and build Next.js
+npm run dev      # Start dev server
+npm run build    # Generate Prisma client + build Next.js
 npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
 
-## Video Upload Flow
+## How video upload works
 
-1. The user selects a video on `/video-upload`.
-2. The client sends `file`, `title`, `description`, and `originalSize` to `/api/video-upload`.
-3. The API checks Clerk auth.
-4. The API uploads the video to Cloudinary.
-5. Cloudinary creates an eager compressed MP4 rendition:
+1. User selects a file on `/video-upload` and submits `file`, `title`, `description`, and `originalSize`
+2. The API verifies Clerk auth
+3. The video uploads to Cloudinary with an eager transformation:
+   ```
+   quality: auto:low  |  fetch_format: mp4  |  video_codec: auto
+   ```
+4. Metadata is stored in Postgres: `publicId`, `originalSize`, `compressedSize`, `duration`, `title`, `description`
+5. `/home` fetches `/api/videos` and renders each video with `VideoCard`
 
-```ts
-{
-  quality: "auto:low",
-  fetch_format: "mp4",
-  video_codec: "auto"
-}
-```
+The hover preview uses a short 15-second clip: `so_0,du_15,q_auto:low,f_mp4`
 
-6. The API stores metadata in Postgres:
+Compression savings are displayed as a percentage. If the compressed file is not smaller, the UI shows **No reduction**.
 
-- `publicId`
-- `originalSize`
-- `compressedSize`
-- `duration`
-- `title`
-- `description`
+## How social image sharing works
 
-7. `/home` fetches `/api/videos` and renders each item with `VideoCard`.
+1. User uploads an image on `/social-share`
+2. `/api/image-upload` uploads it to Cloudinary and returns a `publicId`
+3. `CldImage` renders transformed versions for each format (Instagram Square/Portrait, Twitter Post/Header, Facebook Cover)
+4. Each format can be downloaded directly from the browser
 
-## Video Preview and Compression Display
-
-`VideoCard` uses Cloudinary URLs for:
-
-- Thumbnail image
-- Hover preview clip
-- Compressed download URL
-
-The hover preview uses a short transformed clip:
-
-```ts
-rawTransformations: ["so_0,du_15,q_auto:low,f_mp4"]
-```
-
-Compression is calculated from saved sizes:
-
-```ts
-Math.max(0, Math.round((1 - compressedSize / originalSize) * 100))
-```
-
-If the transformed video is not smaller than the original, the UI shows `No reduction`.
-
-## Image Transformation Flow
-
-1. The user uploads an image on `/social-share`.
-2. `/api/image-upload` uploads the image to Cloudinary.
-3. The page stores the returned Cloudinary `publicId`.
-4. `CldImage` renders transformed versions for formats like Instagram Square, Instagram Portrait, Twitter Post, Twitter Header, and Facebook Cover.
-5. The transformed image can be downloaded from the browser.
-
-## Authentication and Route Protection
-
-`proxy.ts` uses Clerk middleware.
-
-- `/sign-in`, `/sign-up`, and `/home` are public routes.
-- `/api/videos` is public.
-- `/video-upload`, `/social-share`, `/api/video-upload`, and `/api/image-upload` require a signed-in user.
-- `/` redirects to `/home`.
-- Signed-in users visiting auth pages are redirected to `/home`.
-
-## Database Model
+## Database schema
 
 ```prisma
 model Video {
@@ -216,9 +126,40 @@ model Video {
 }
 ```
 
-## Development Notes
+## Project structure
 
-- Existing uploaded videos keep their old `compressedSize`; upload a new video to see the latest compression behavior.
-- Cloudinary compression can still produce `No reduction` for already optimized videos.
-- `npm run lint` currently reports existing issues in unrelated files, especially `social-share`, `image-upload`, and some image usage warnings.
-- `next.config.ts` currently allows remote Clerk avatar images from `img.clerk.com`.
+```
+app/
+  (app)/
+    home/               Video gallery
+    social-share/       Image transformation tool
+    video-upload/       Video upload form
+    layout.tsx          Authenticated app shell
+  (auth)/
+    sign-in/            Clerk sign-in
+    sign-up/            Clerk sign-up
+    layout.tsx          Centered auth layout
+  api/
+    image-upload/
+    video-upload/
+    videos/
+components/
+  VideoCard.tsx
+  ToastProvider.tsx
+lib/
+  cloudinary.ts
+PrismaSetup/
+  prismaSetup.ts
+prisma/
+  schema.prisma
+proxy.ts                Clerk middleware + route protection
+types/
+  index.ts
+```
+
+## Notes
+
+- Already-optimized videos may show **No reduction** — Cloudinary compression cannot shrink a file that is already compact
+- `npm run lint` reports existing issues in `social-share`, `image-upload`, and some image usage warnings; these are pre-existing and unrelated to new uploads
+- Clerk avatar images from `img.clerk.com` are allowlisted in `next.config.ts`
+- Do not commit `.env.local` — it contains live credentials
